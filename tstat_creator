@@ -1,0 +1,38 @@
+% Creates t-stats by dividing cope/varcope for each participant in the
+% Shark cluster
+
+allsub = dir('/exports/fsw/afarina/250_brains/250_brains/PIOP_FIRST_AND_GROUPLEVEL/FirstLevel_piop/*pi*');
+Pathstem = '/exports/fsw/afarina/250_brains/250_brains/PIOP_FIRST_AND_GROUPLEVEL/FirstLevel_piop/';
+
+% creates bash_script to use in Shark
+tstatcreator_script = {sprintf(['#!/bin/bash\n#$ -S /bin/bash\n#$ -q all.q\n#$ -N tstatcreator\n#$ -pe BWA 2\n'...
+    '#$ -l h_vmem=3g\n#$ -cwd\n#$ -j Y\n#$ -V\n module load fsl/5.0.9-shark\n'])};
+
+count = 1;
+
+for s = 1:length(allsub)
+    % finds if strooptask has been run for that subject
+    stroopdir = dir([Pathstem allsub(s).name, filesep, '*stroop.feat*']);
+    if ~isempty(stroopdir)
+        tstat = dir([Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/','*stats*']);
+        count = count+1;
+        if isempty(tstat)        
+        tstatcreator_script{count} = ['fslmaths ', Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/cope3.nii.gz -div ',...
+            Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/varcope3.nii.gz ',...
+            Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/andrea_tstat3.nii.gz'];
+        else
+            tstatcreator_script{count} = ['fslmaths ', Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/stats/cope3.nii.gz -div ',...
+            Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/stats/varcope3.nii.gz ',...
+            Pathstem allsub(s).name , filesep, stroopdir.name filesep, 'reg_standard/andrea_tstat3.nii.gz'];
+        end
+    end
+end
+
+% writing the entire bash script to a file so that we can do it on the
+% Shark 
+fid = fopen(sprintf('/exports/fsw/afarina/250_brains/Bash_scripts/tstatcreator.sh'), 'w');
+for t = 1:length(tstatcreator_script)
+    fprintf(fid,'%s\n',tstatcreator_script{t});
+end
+fclose(fid);
+    
